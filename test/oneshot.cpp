@@ -64,9 +64,23 @@ int main(int argc, char **argv)
     }
 
 
-    for (const QPFile & qp_file : files)
+    std::vector<qp::QP> qp_problems;
+    try
     {
-        std::cout << qp_file.path_ << std::endl;
+        for (const QPFile & qp_file : files)
+        {
+            std::cout << "Reading " << qp_file.path_ << std::endl;
+            qp::QP qp;
+            ariles2::apply<ariles2::rapidjson::Reader>(qp_file.path_, qp);
+            //ariles2::apply<ariles2::rapidjson::Writer>(std::cout, qp);
+            //std::cout << qp.objective_.hessian_.rows() << std::endl;
+            qp_problems.push_back(qp);
+        }
+    }
+    catch(const std::exception & e)
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return (EXIT_FAILURE);
     }
 
     return (EXIT_SUCCESS);

@@ -99,6 +99,7 @@ namespace qp
 
     class QP : public ariles2::NonFlatMatricesRelaxedSloppyBase
     {
+#define ARILES2_DEFAULT_ID "qp"
 #define ARILES2_ENTRIES(v)                                                                                             \
     ARILES2_TYPED_ENTRY_(v, objective, Objective)                                                                      \
     ARILES2_TYPED_ENTRY_(v, bounds, Bounds)                                                                            \
