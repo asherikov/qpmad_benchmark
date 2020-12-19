@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.0)
 project(qpmad_benchmark VERSION 0.1.0)
 
 
+set (CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+
+
 # --------------
 # Options
 # --------------
@@ -41,3 +44,8 @@ set(BUILD_SHARED_LIBS   OFF)
 add_subdirectory("ariles" "ariles")
 # --------------
 
+
+# --------------
+enable_testing()
+add_subdirectory("${PROJECT_SOURCE_DIR}/test")
+# --------------

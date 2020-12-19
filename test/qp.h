@@ -1,0 +1,112 @@
+/**
+    @file
+    @author  Alexander Sherikov
+
+    @copyright 2020 Alexander Sherikov, Licensed under the Apache License, Version 2.0.
+    (see @ref LICENSE or http://www.apache.org/licenses/LICENSE-2.0)
+
+    @brief
+*/
+
+
+#include <ariles2/visitors/rapidjson.h>
+
+#include <ariles2/adapters/basic.h>
+#include <ariles2/adapters/eigen.h>
+#include <ariles2/adapters/std_vector.h>
+
+#include <ariles2/ariles.h>
+#include <ariles2/extra.h>
+
+
+namespace qp
+{
+    class Objective : public ariles2::NonFlatMatricesRelaxedSloppyBase
+    {
+#define ARILES2_ENTRIES(v)                                                                                             \
+    ARILES2_TYPED_ENTRY_(v, hessian, Eigen::MatrixXd)                                                                  \
+    ARILES2_TYPED_ENTRY_(v, vector, Eigen::VectorXd)                                                                   \
+    ARILES2_TYPED_ENTRY_(v, positive_definite, bool)
+#include ARILES2_INITIALIZE
+
+    public:
+        virtual ~Objective() = default;
+
+        void arilesVisit(const ariles2::Defaults & /*visitor*/, const ariles2::Defaults::Parameters & /*param*/)
+        {
+            hessian_.resize(0, 0);
+            vector_.resize(0);
+            positive_definite_ = false;
+        }
+    };
+
+
+    class Bounds : public ariles2::NonFlatMatricesRelaxedSloppyBase
+    {
+#define ARILES2_ENTRIES(v)                                                                                             \
+    ARILES2_TYPED_ENTRY_(v, lower, Eigen::VectorXd)                                                                    \
+    ARILES2_TYPED_ENTRY_(v, upper, Eigen::VectorXd)
+#include ARILES2_INITIALIZE
+
+    public:
+        virtual ~Bounds() = default;
+
+        void arilesVisit(const ariles2::Defaults & /*visitor*/, const ariles2::Defaults::Parameters & /*param*/)
+        {
+            lower_.resize(0);
+            upper_.resize(0);
+        }
+    };
+
+
+    class Solution : public ariles2::NonFlatMatricesRelaxedSloppyBase
+    {
+#define ARILES2_ENTRIES(v)                                                                                             \
+    ARILES2_TYPED_ENTRY_(v, vector, Eigen::VectorXd)                                                                   \
+    ARILES2_TYPED_ENTRY_(v, value, double)
+#include ARILES2_INITIALIZE
+
+    public:
+        virtual ~Solution() = default;
+
+        void arilesVisit(const ariles2::Defaults & /*visitor*/, const ariles2::Defaults::Parameters & /*param*/)
+        {
+            vector_.resize(0);
+            value_ = std::numeric_limits<double>::signaling_NaN();
+        }
+    };
+
+
+    class Constraints : public ariles2::NonFlatMatricesRelaxedSloppyBase
+    {
+#define ARILES2_ENTRIES(v)                                                                                             \
+    ARILES2_TYPED_ENTRY_(v, lower, Eigen::VectorXd)                                                                    \
+    ARILES2_TYPED_ENTRY_(v, upper, Eigen::VectorXd)                                                                    \
+    ARILES2_TYPED_ENTRY_(v, matrix, Eigen::MatrixXd)
+#include ARILES2_INITIALIZE
+
+    public:
+        virtual ~Constraints() = default;
+
+        void arilesVisit(const ariles2::Defaults & /*visitor*/, const ariles2::Defaults::Parameters & /*param*/)
+        {
+            lower_.resize(0);
+            upper_.resize(0);
+            matrix_.resize(0, 0);
+        }
+    };
+
+
+    class QP : public ariles2::NonFlatMatricesRelaxedSloppyBase
+    {
+#define ARILES2_ENTRIES(v)                                                                                             \
+    ARILES2_TYPED_ENTRY_(v, objective, Objective)                                                                      \
+    ARILES2_TYPED_ENTRY_(v, bounds, Bounds)                                                                            \
+    ARILES2_TYPED_ENTRY_(v, constraints, Constraints)                                                                  \
+    ARILES2_TYPED_ENTRY_(v, solution, Solution)
+#include ARILES2_INITIALIZE
+
+    public:
+        virtual ~QP() = default;
+    };
+}  // namespace qp
