@@ -1,0 +1,13 @@
+[submodule "qp_collection"]
+	path = qp_collection
+	url = git@github.com:asherikov/qp_collection.git
+[submodule "qpmad"]
+	path = qpmad
+	url = git@github.com:asherikov/qpmad.git
+[submodule "ariles"]
+	path = ariles
+	url = git@github.com:asherikov/ariles.git
+	branch = head_2
+[submodule "qpOASES"]
+	path = qpOASES
+	url = git@github.com:coin-or/qpOASES.git
