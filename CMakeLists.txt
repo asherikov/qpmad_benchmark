@@ -46,6 +46,12 @@ add_subdirectory("ariles" "ariles")
 
 
 # --------------
+find_package(Boost REQUIRED filesystem)
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+# --------------
+
+
+# --------------
 enable_testing()
 add_subdirectory("${PROJECT_SOURCE_DIR}/test")
 # --------------
