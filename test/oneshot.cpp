@@ -16,7 +16,7 @@
 #include <qpOASES.hpp>
 
 #include "qp.h"
-
+#include "timer.h"
 
 namespace
 {
@@ -26,7 +26,7 @@ namespace
         std::string name_;
         std::string extension_;
     };
-}
+}  // namespace
 
 
 int main(int argc, char **argv)
@@ -67,21 +67,83 @@ int main(int argc, char **argv)
     std::vector<qp::QP> qp_problems;
     try
     {
-        for (const QPFile & qp_file : files)
+        for (const QPFile &qp_file : files)
         {
             std::cout << "Reading " << qp_file.path_ << std::endl;
-            qp::QP qp;
-            ariles2::apply<ariles2::rapidjson::Reader>(qp_file.path_, qp);
-            //ariles2::apply<ariles2::rapidjson::Writer>(std::cout, qp);
-            //std::cout << qp.objective_.hessian_.rows() << std::endl;
-            qp_problems.push_back(qp);
+            qp::QP qp_problem;
+            ariles2::apply<ariles2::rapidjson::Reader>(qp_file.path_, qp_problem);
+            // ariles2::apply<ariles2::rapidjson::Writer>(std::cout, qp);
+            // std::cout << qp_problem.objective_.hessian_.rows() << std::endl;
+            if (qp_problem.id_.empty())
+            {
+                qp_problem.id_ = qp_file.name_;
+            }
+            qp_problems.push_back(qp_problem);
         }
     }
-    catch(const std::exception & e)
+    catch (const std::exception &e)
     {
         std::cerr << "Exception: " << e.what() << std::endl;
         return (EXIT_FAILURE);
     }
 
-    return (EXIT_SUCCESS);
+
+    bool fail = false;
+    try
+    {
+        benchmark::Timer timer;
+
+        for (const qp::QP &qp_problem : qp_problems)
+        {
+            qpmad::Solver solver;
+            qpmad::Solver::ReturnStatus status;
+            Eigen::MatrixXd hessian_copy = qp_problem.objective_.hessian_;
+            Eigen::VectorXd solution;
+
+            std::cout << qp_problem.id_ << "  ";
+            if (qp_problem.objective_.positive_definite_)
+            {
+                timer.start();
+                status = solver.solve(
+                        solution,
+                        hessian_copy,
+                        qp_problem.objective_.vector_,
+                        qp_problem.bounds_.lower_,
+                        qp_problem.bounds_.upper_,
+                        qp_problem.constraints_.matrix_,
+                        qp_problem.constraints_.lower_,
+                        qp_problem.constraints_.upper_);
+                timer.stop();
+
+                const double err = (solution - qp_problem.solution_.vector_).norm();
+                if (err < 1e-9)
+                {
+                    std::cout << "ok, " << timer << std::endl;
+                }
+                else
+                {
+                    fail = true;
+                    std::cout << "fail, error = " << err << std::endl;
+                }
+            }
+            else
+            {
+                std::cout << "skipped" << std::endl;
+            }
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return (EXIT_FAILURE);
+    }
+
+    if (fail)
+    {
+        return (EXIT_FAILURE);
+    }
+    else
+    {
+        return (EXIT_SUCCESS);
+    }
 }

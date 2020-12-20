@@ -104,7 +104,8 @@ namespace qp
     ARILES2_TYPED_ENTRY_(v, objective, Objective)                                                                      \
     ARILES2_TYPED_ENTRY_(v, bounds, Bounds)                                                                            \
     ARILES2_TYPED_ENTRY_(v, constraints, Constraints)                                                                  \
-    ARILES2_TYPED_ENTRY_(v, solution, Solution)
+    ARILES2_TYPED_ENTRY_(v, solution, Solution)                                                                        \
+    ARILES2_TYPED_ENTRY_(v, id, std::string)
 #include ARILES2_INITIALIZE
 
     public:
