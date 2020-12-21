@@ -10,7 +10,7 @@ set (CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
 # Options
 # --------------
 set(CMAKE_VERBOSE_MAKEFILE  ON)
-set(CMAKE_BUILD_TYPE        "Debug")
+set(CMAKE_BUILD_TYPE        "Release")
 # --------------
 
 
@@ -25,6 +25,7 @@ add_subdirectory("qpmad" "qpmad")
 # --------------
 # qpOASES
 # --------------
+add_definitions("-D__SUPPRESSANYOUTPUT__")
 add_subdirectory("qpOASES" "qpOASES")
 # --------------
 
@@ -38,6 +39,7 @@ set(ARILES_BUILD_REGRESSION_TESTS   OFF     CACHE BOOL "")
 
 set(ARILES_ENABLE_CORE              ON      CACHE BOOL "")
 set(ARILES_VISITOR_rapidjson        ON      CACHE BOOL "")
+set(ARILES_VISITOR_octave           ON      CACHE BOOL "")
 
 set(BUILD_SHARED_LIBS   OFF)
 

@@ -10,6 +10,7 @@
 
 
 #include <ariles2/visitors/rapidjson.h>
+#include <ariles2/visitors/octave.h>
 
 #include <ariles2/adapters/basic.h>
 #include <ariles2/adapters/eigen.h>
@@ -110,5 +111,20 @@ namespace qp
 
     public:
         virtual ~QP() = default;
+
+        std::size_t getNumberOfVariables() const
+        {
+            return (objective_.hessian_.rows());
+        }
+
+        std::size_t getNumberOfConstraints() const
+        {
+            return (constraints_.matrix_.rows());
+        }
+
+        std::size_t hasBounds() const
+        {
+            return (bounds_.lower_.rows() > 0);
+        }
     };
 }  // namespace qp
