@@ -127,4 +127,18 @@ namespace qp
             return (bounds_.lower_.rows() > 0);
         }
     };
+
+
+    class IterativeQP : public ariles2::NonFlatMatricesRelaxedSloppyBase
+    {
+#define ARILES2_DEFAULT_ID "qp_iterative"
+#define ARILES2_ENTRIES(v)                                                                                             \
+    ARILES2_TYPED_ENTRY_(v, common, QP)                                                                                \
+    ARILES2_TYPED_ENTRY_(v, instances, std::vector<QP>)                                                                \
+    ARILES2_TYPED_ENTRY_(v, id, std::string)
+#include ARILES2_INITIALIZE
+
+    public:
+        virtual ~IterativeQP() = default;
+    };
 }  // namespace qp

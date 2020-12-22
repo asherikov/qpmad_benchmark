@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
 
-    std::vector<benchmark::Problem<qp::QP>> qps;
+    std::vector<benchmark::Problem<qp::IterativeQP>> qps;
     try
     {
         for (std::size_t index = 1; index < argc; ++index)
@@ -80,10 +80,10 @@ int main(int argc, char **argv)
                     continue;
                 }
 
-                benchmark::Problem<qp::QP> qp_container;
+                benchmark::Problem<qp::IterativeQP> qp_container;
                 qp_container.file_.init(file);
                 qp_container.load();
-                if (qp_container.problem_.objective_.positive_definite_)
+                if (qp_container.problem_.common_.objective_.positive_definite_)
                 {
                     qps.emplace_back(qp_container);
                 }
@@ -108,14 +108,15 @@ int main(int argc, char **argv)
 
 
     AllResults results(qps.size());
-
     bool fail = false;
+
+    /*
     try
     {
         benchmark::Timer timer;
         std::size_t result_index = 0;
 
-        for (benchmark::Problem<qp::QP> &qp_container : qps)
+        for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
         {
             qpmad::Solver solver;
             qpmad::Solver::ReturnStatus status;
@@ -161,7 +162,7 @@ int main(int argc, char **argv)
         benchmark::Timer timer;
         std::size_t result_index = 0;
 
-        for (benchmark::Problem<qp::QP> &qp_container : qps)
+        for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
         {
             std::shared_ptr<qpOASES::QProblem> qp = std::make_shared<qpOASES::QProblem>(
                     qp_container.problem_.getNumberOfVariables(),
@@ -253,7 +254,7 @@ int main(int argc, char **argv)
         benchmark::Timer timer;
         std::size_t result_index = 0;
 
-        for (benchmark::Problem<qp::QP> &qp_container : qps)
+        for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
         {
             eiquadprog::solvers::EiquadprogFast qp;
 
@@ -372,6 +373,7 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
     std::cout << "---" << std::endl;
+    */
 
 
     if (fail)
