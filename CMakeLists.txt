@@ -31,6 +31,16 @@ add_subdirectory("qpOASES" "qpOASES")
 
 
 # --------------
+# eiquadprog
+# --------------
+set(INSTALL_PKG_CONFIG_FILE OFF CACHE BOOL "")
+set(LOGGING_FILENAME "/dev/null" CACHE STRING "")
+add_subdirectory("eiquadprog" "eiquadprog")
+include_directories(SYSTEM "eiquadprog/include")
+# --------------
+
+
+# --------------
 # ariles
 # --------------
 set(ARILES_VISITORS_DEFAULT_MODE    OFF     CACHE BOOL "")

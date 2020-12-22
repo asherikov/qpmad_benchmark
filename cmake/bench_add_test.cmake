@@ -3,6 +3,8 @@ function(bench_add_test     TEST_NAME   TEST_SOURCES    DIR_PROBLEMS)
     add_executable(${TGT_NAME} "${TEST_SOURCES}")
     set_target_properties(${TGT_NAME} PROPERTIES OUTPUT_NAME "${TEST_NAME}")
 
+    target_link_libraries(${TGT_NAME} "eiquadprog")
+
     target_link_libraries(${TGT_NAME} "ariles2_visitor_rapidjson")
     target_link_libraries(${TGT_NAME} "ariles2_visitor_octave")
     target_link_libraries(${TGT_NAME} ${Boost_FILESYSTEM_LIBRARIES})

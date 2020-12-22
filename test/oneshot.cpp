@@ -14,6 +14,7 @@
 
 #include <qpmad/solver.h>
 #include <qpOASES.hpp>
+#include <eiquadprog/eiquadprog-fast.hpp>
 
 
 #include "qp.h"
@@ -62,12 +63,13 @@ namespace
     class AllResults : public ariles2::DefaultBase
     {
 #define ARILES2_ENTRIES(v)                                                                                             \
-    ARILES2_TYPED_ENTRY_(v, qpmad, Results)                                                                   \
-    ARILES2_TYPED_ENTRY_(v, qpoases, Results)
+    ARILES2_TYPED_ENTRY_(v, qpmad, Results)                                                                            \
+    ARILES2_TYPED_ENTRY_(v, qpoases, Results)                                                                          \
+    ARILES2_TYPED_ENTRY_(v, eiquadprog, Results)
 #include ARILES2_INITIALIZE
 
     public:
-        AllResults(const std::size_t size) : qpmad_(size), qpoases_(size)
+        AllResults(const std::size_t size) : qpmad_(size), qpoases_(size), eiquadprog_(size)
         {
         }
     };
@@ -101,39 +103,42 @@ int main(int argc, char **argv)
     }
 
     std::vector<QPContainer> qps;
-    for (std::size_t index = 1; index < argc; ++index)
-    {
-        const std::string dir = argv[index];
-        if (boost::filesystem::is_directory(dir))
-        {
-            for (boost::filesystem::directory_entry &file : boost::filesystem::directory_iterator(dir))
-            {
-                if (boost::filesystem::is_regular(file))
-                {
-                    QPContainer qp_container;
-                    qp_container.file_.init(file);
-                    qps.emplace_back(qp_container);
-                }
-            }
-        }
-    }
-
-    if (qps.empty())
-    {
-        return (EXIT_FAILURE);
-    }
-
-
     try
     {
-        for (QPContainer &qp_container : qps)
+        for (std::size_t index = 1; index < argc; ++index)
         {
-            qp_container.load();
+            const std::string dir = argv[index];
+            if (boost::filesystem::is_directory(dir))
+            {
+                for (boost::filesystem::directory_entry &file : boost::filesystem::directory_iterator(dir))
+                {
+                    if (boost::filesystem::is_regular(file))
+                    {
+                        QPContainer qp_container;
+                        qp_container.file_.init(file);
+                        qp_container.load();
+                        if (qp_container.problem_.objective_.positive_definite_)
+                        {
+                            qps.emplace_back(qp_container);
+                        }
+                        else
+                        {
+                            std::cout << qp_container.problem_.id_ << "  skipped" << std::endl;
+                        }
+                    }
+                }
+            }
         }
     }
     catch (const std::exception &e)
     {
         std::cerr << "Exception: " << e.what() << std::endl;
+        return (EXIT_FAILURE);
+    }
+
+
+    if (qps.empty())
+    {
         return (EXIT_FAILURE);
     }
 
@@ -154,34 +159,27 @@ int main(int argc, char **argv)
             Eigen::VectorXd solution;
 
             std::cout << qp_container.problem_.id_ << "  ";
-            if (qp_container.problem_.objective_.positive_definite_)
-            {
-                timer.start();
-                status = solver.solve(
-                        solution,
-                        hessian_copy,
-                        qp_container.problem_.objective_.vector_,
-                        qp_container.problem_.bounds_.lower_,
-                        qp_container.problem_.bounds_.upper_,
-                        qp_container.problem_.constraints_.matrix_,
-                        qp_container.problem_.constraints_.lower_,
-                        qp_container.problem_.constraints_.upper_);
-                results.qpmad_.durations_(result_index) = timer.stop();
+            timer.start();
+            status = solver.solve(
+                    solution,
+                    hessian_copy,
+                    qp_container.problem_.objective_.vector_,
+                    qp_container.problem_.bounds_.lower_,
+                    qp_container.problem_.bounds_.upper_,
+                    qp_container.problem_.constraints_.matrix_,
+                    qp_container.problem_.constraints_.lower_,
+                    qp_container.problem_.constraints_.upper_);
+            results.qpmad_.durations_(result_index) = timer.stop();
 
-                results.qpmad_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
-                if (results.qpmad_.errors_(result_index) < 1e-9)
-                {
-                    std::cout << "ok, " << timer << std::endl;
-                }
-                else
-                {
-                    fail = true;
-                    std::cout << "fail, error = " << results.qpmad_.errors_(result_index) << std::endl;
-                }
+            results.qpmad_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
+            if (results.qpmad_.errors_(result_index) < 1e-9)
+            {
+                std::cout << "ok, " << timer << std::endl;
             }
             else
             {
-                std::cout << "skipped" << std::endl;
+                fail = true;
+                std::cout << "fail, error = " << results.qpmad_.errors_(result_index) << std::endl;
             }
             ++result_index;
         }
@@ -191,6 +189,7 @@ int main(int argc, char **argv)
         std::cerr << "Exception: " << e.what() << std::endl;
         return (EXIT_FAILURE);
     }
+    std::cout << "---" << std::endl;
 
 
     try
@@ -246,40 +245,33 @@ int main(int argc, char **argv)
             int number_of_iterations = 10000;
 
             std::cout << qp_container.problem_.id_ << "  ";
-            if (qp_container.problem_.objective_.positive_definite_)
-            {
-                timer.start();
-                qpoases_return_value = qp->init(
-                        qp_container.problem_.objective_.hessian_.data(),
-                        qp_container.problem_.objective_.vector_.data(),
-                        A_ptr,
-                        lb_ptr,
-                        ub_ptr,
-                        lbA_ptr,
-                        ubA_ptr,
-                        number_of_iterations,
-                        max_time_ptr,
-                        solution_guess_ptr,
-                        NULL,  // Optimal dual solution vector
-                        active_set_bounds_ptr,
-                        active_set_constraints_ptr);
-                qp->getPrimalSolution(solution.data());
-                results.qpoases_.durations_(result_index) = timer.stop();
+            timer.start();
+            qpoases_return_value = qp->init(
+                    qp_container.problem_.objective_.hessian_.data(),
+                    qp_container.problem_.objective_.vector_.data(),
+                    A_ptr,
+                    lb_ptr,
+                    ub_ptr,
+                    lbA_ptr,
+                    ubA_ptr,
+                    number_of_iterations,
+                    max_time_ptr,
+                    solution_guess_ptr,
+                    NULL,  // Optimal dual solution vector
+                    active_set_bounds_ptr,
+                    active_set_constraints_ptr);
+            qp->getPrimalSolution(solution.data());
+            results.qpoases_.durations_(result_index) = timer.stop();
 
-                results.qpoases_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
-                if (results.qpoases_.errors_(result_index) < 1e-9)
-                {
-                    std::cout << "ok, " << timer << std::endl;
-                }
-                else
-                {
-                    fail = true;
-                    std::cout << "fail, error = " << results.qpoases_.errors_(result_index) << std::endl;
-                }
+            results.qpoases_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
+            if (results.qpoases_.errors_(result_index) < 1e-9)
+            {
+                std::cout << "ok, " << timer << std::endl;
             }
             else
             {
-                std::cout << "skipped" << std::endl;
+                fail = true;
+                std::cout << "fail, error = " << results.qpoases_.errors_(result_index) << std::endl;
             }
             ++result_index;
         }
@@ -289,6 +281,133 @@ int main(int argc, char **argv)
         std::cerr << "Exception: " << e.what() << std::endl;
         return (EXIT_FAILURE);
     }
+    std::cout << "---" << std::endl;
+
+
+    try
+    {
+        benchmark::Timer timer;
+        std::size_t result_index = 0;
+
+        for (QPContainer &qp_container : qps)
+        {
+            eiquadprog::solvers::EiquadprogFast qp;
+
+            std::size_t total_ctr_num = 0;
+            Eigen::MatrixXd constraints;
+            Eigen::VectorXd constraints_lb;
+            Eigen::VectorXd constraints_ub;
+            if (qp_container.problem_.hasBounds())
+            {
+                total_ctr_num =
+                        qp_container.problem_.getNumberOfVariables() + qp_container.problem_.getNumberOfConstraints();
+
+                constraints.resize(total_ctr_num, qp_container.problem_.getNumberOfVariables());
+                constraints_lb.resize(total_ctr_num);
+                constraints_ub.resize(total_ctr_num);
+
+
+                constraints.topRows(qp_container.problem_.getNumberOfConstraints()) =
+                        qp_container.problem_.constraints_.matrix_;
+                constraints_lb.head(qp_container.problem_.getNumberOfConstraints()) =
+                        qp_container.problem_.constraints_.lower_;
+                constraints_ub.head(qp_container.problem_.getNumberOfConstraints()) =
+                        qp_container.problem_.constraints_.upper_;
+
+                constraints.bottomRows(qp_container.problem_.getNumberOfVariables()).setIdentity();
+                constraints_lb.tail(qp_container.problem_.getNumberOfVariables()) =
+                        qp_container.problem_.bounds_.lower_;
+                constraints_ub.tail(qp_container.problem_.getNumberOfVariables()) =
+                        qp_container.problem_.bounds_.upper_;
+            }
+            else
+            {
+                total_ctr_num = qp_container.problem_.getNumberOfConstraints();
+
+                constraints = qp_container.problem_.constraints_.matrix_;
+                constraints_lb = qp_container.problem_.constraints_.lower_;
+                constraints_ub = qp_container.problem_.constraints_.upper_;
+            }
+
+
+            std::vector<std::size_t> equalities;
+            std::vector<std::size_t> inequalities;
+            for (std::size_t i = 0; i < total_ctr_num; ++i)
+            {
+                if (std::abs(constraints_lb(i) - constraints_ub(i)) < 1e-9)
+                {
+                    equalities.push_back(i);
+                }
+                else
+                {
+                    inequalities.push_back(i);
+                }
+            }
+
+            const std::size_t num_eq = equalities.size();
+            const std::size_t num_ineq = total_ctr_num - equalities.size();
+
+
+            Eigen::MatrixXd Aeq;
+            Eigen::VectorXd Beq;
+            Eigen::MatrixXd Aineq;
+            Eigen::VectorXd Bineq;
+
+            Aeq.resize(num_eq, qp_container.problem_.getNumberOfVariables());
+            Beq.resize(num_eq);
+            for (std::size_t i = 0; i < num_eq; ++i)
+            {
+                Aeq.row(i) = constraints.row(equalities[i]);
+                Beq(i) = -constraints_lb(equalities[i]);
+            }
+
+            Aineq.resize(num_ineq*2, qp_container.problem_.getNumberOfVariables());
+            Bineq.resize(num_ineq*2);
+            for (std::size_t i = 0; i < num_ineq; ++i)
+            {
+                Aineq.row(i) = constraints.row(inequalities[i]);
+                Bineq(i) = -constraints_lb(inequalities[i]);
+                Aineq.row(num_ineq + i) = -constraints.row(inequalities[i]);
+                Bineq(num_ineq + i) = constraints_ub(inequalities[i]);
+            }
+
+            qp.reset(qp_container.problem_.getNumberOfVariables(), num_eq, num_ineq*2);
+
+
+            Eigen::VectorXd solution;
+            solution.resize(qp_container.problem_.getNumberOfVariables());
+
+            std::cout << qp_container.problem_.id_ << "  ";
+            timer.start();
+            eiquadprog::solvers::EiquadprogFast_status status = qp.solve_quadprog(
+                    qp_container.problem_.objective_.hessian_,
+                    qp_container.problem_.objective_.vector_,
+                    Aeq,
+                    Beq,
+                    Aineq,
+                    Bineq,
+                    solution);
+            results.eiquadprog_.durations_(result_index) = timer.stop();
+
+            results.eiquadprog_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
+            if (results.eiquadprog_.errors_(result_index) < 1e-9)
+            {
+                std::cout << "ok, " << timer << std::endl;
+            }
+            else
+            {
+                fail = true;
+                std::cout << "fail, error = " << results.eiquadprog_.errors_(result_index) << std::endl;
+            }
+            ++result_index;
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return (EXIT_FAILURE);
+    }
+    std::cout << "---" << std::endl;
 
 
     if (fail)
@@ -299,6 +418,7 @@ int main(int argc, char **argv)
     {
         std::cout << "qpmad " << results.qpmad_.durations_.mean() << std::endl;
         std::cout << "qpOASES " << results.qpoases_.durations_.mean() << std::endl;
+        std::cout << "eiquadprog " << results.eiquadprog_.durations_.mean() << std::endl;
 
         // ariles2::apply<ariles2::octave::Writer>(std::cout, results);
         ariles2::apply<ariles2::octave::Writer>("oneshot.m", results);

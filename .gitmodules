@@ -11,3 +11,6 @@
 [submodule "qpOASES"]
 	path = qpOASES
 	url = git@github.com:coin-or/qpOASES.git
+[submodule "eiquadprog"]
+	path = eiquadprog
+	url = git@github.com:stack-of-tasks/eiquadprog.git
