@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
 
-    std::vector<benchmark::Problem<qp::IterativeQP>> qps;
+    std::vector<benchmark::Problem<qp::IterativeQP> > qps;
     try
     {
         for (std::size_t index = 1; index < argc; ++index)
@@ -107,10 +107,14 @@ int main(int argc, char **argv)
     }
 
 
-    AllResults results(qps.size());
+    std::size_t results_size = 0;
+    for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
+    {
+        results_size += qp_container.problem_.instances_.size();
+    }
+    AllResults results(results_size);
     bool fail = false;
 
-    /*
     try
     {
         benchmark::Timer timer;
@@ -120,33 +124,45 @@ int main(int argc, char **argv)
         {
             qpmad::Solver solver;
             qpmad::Solver::ReturnStatus status;
-            Eigen::MatrixXd hessian_copy = qp_container.problem_.objective_.hessian_;
+            Eigen::MatrixXd hessian_copy = qp_container.problem_.common_.objective_.hessian_;
             Eigen::VectorXd solution;
 
-            std::cout << qp_container.problem_.id_ << "  ";
-            timer.start();
-            status = solver.solve(
-                    solution,
-                    hessian_copy,
-                    qp_container.problem_.objective_.vector_,
-                    qp_container.problem_.bounds_.lower_,
-                    qp_container.problem_.bounds_.upper_,
-                    qp_container.problem_.constraints_.matrix_,
-                    qp_container.problem_.constraints_.lower_,
-                    qp_container.problem_.constraints_.upper_);
-            results.qpmad_.durations_(result_index) = timer.stop();
+            const bool has_common_ctr = qp_container.problem_.common_.constraints_.matrix_.rows() > 0;
+            qpmad::SolverParameters param;
+            param.hessian_type_ = qpmad::SolverParameters::HESSIAN_LOWER_TRIANGULAR;
 
-            results.qpmad_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
-            if (results.qpmad_.errors_(result_index) < 1e-9)
+            std::cout << qp_container.problem_.id_ << std::endl;
+            for (qp::QP qp_problem : qp_container.problem_.instances_)
             {
-                std::cout << "ok, " << timer << std::endl;
+                timer.start();
+                status = solver.solve(
+                        solution,
+                        hessian_copy,
+                        qp_problem.objective_.vector_,
+                        qp_problem.bounds_.lower_,
+                        qp_problem.bounds_.upper_,
+                        has_common_ctr ? qp_container.problem_.common_.constraints_.matrix_ :
+                                         qp_problem.constraints_.matrix_,
+                        qp_problem.constraints_.lower_,
+                        qp_problem.constraints_.upper_,
+                        param);
+                results.qpmad_.durations_(result_index) = timer.stop();
+
+                results.qpmad_.errors_(result_index) = (solution - qp_problem.solution_.vector_).norm();
+                if (results.qpmad_.errors_(result_index) < 1e-9)
+                {
+                    std::cout << "ok, " << timer << std::endl;
+                }
+                else
+                {
+                    fail = true;
+                    std::cout << "fail, error = " << results.qpmad_.errors_(result_index) << std::endl;
+                    break;
+                }
+                ++result_index;
+                // reuse Hessian factorization.
+                param.hessian_type_ = qpmad::SolverParameters::HESSIAN_CHOLESKY_FACTOR;
             }
-            else
-            {
-                fail = true;
-                std::cout << "fail, error = " << results.qpmad_.errors_(result_index) << std::endl;
-            }
-            ++result_index;
         }
     }
     catch (const std::exception &e)
@@ -157,6 +173,7 @@ int main(int argc, char **argv)
     std::cout << "---" << std::endl;
 
 
+    /*
     try
     {
         benchmark::Timer timer;
