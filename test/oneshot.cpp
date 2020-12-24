@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
 
-    std::vector<benchmark::Problem<qp::QP>> qps;
+    std::vector<benchmark::Problem<qp::QP> > qps;
     try
     {
         for (std::size_t index = 1; index < argc; ++index)
@@ -257,85 +257,25 @@ int main(int argc, char **argv)
         {
             eiquadprog::solvers::EiquadprogFast qp;
 
-            std::size_t total_ctr_num = 0;
-            Eigen::MatrixXd constraints;
-            Eigen::VectorXd constraints_lb;
-            Eigen::VectorXd constraints_ub;
-            if (qp_container.problem_.hasBounds())
-            {
-                total_ctr_num =
-                        qp_container.problem_.getNumberOfVariables() + qp_container.problem_.getNumberOfConstraints();
-
-                constraints.resize(total_ctr_num, qp_container.problem_.getNumberOfVariables());
-                constraints_lb.resize(total_ctr_num);
-                constraints_ub.resize(total_ctr_num);
-
-
-                constraints.topRows(qp_container.problem_.getNumberOfConstraints()) =
-                        qp_container.problem_.constraints_.matrix_;
-                constraints_lb.head(qp_container.problem_.getNumberOfConstraints()) =
-                        qp_container.problem_.constraints_.lower_;
-                constraints_ub.head(qp_container.problem_.getNumberOfConstraints()) =
-                        qp_container.problem_.constraints_.upper_;
-
-                constraints.bottomRows(qp_container.problem_.getNumberOfVariables()).setIdentity();
-                constraints_lb.tail(qp_container.problem_.getNumberOfVariables()) =
-                        qp_container.problem_.bounds_.lower_;
-                constraints_ub.tail(qp_container.problem_.getNumberOfVariables()) =
-                        qp_container.problem_.bounds_.upper_;
-            }
-            else
-            {
-                total_ctr_num = qp_container.problem_.getNumberOfConstraints();
-
-                constraints = qp_container.problem_.constraints_.matrix_;
-                constraints_lb = qp_container.problem_.constraints_.lower_;
-                constraints_ub = qp_container.problem_.constraints_.upper_;
-            }
-
-
-            std::vector<std::size_t> equalities;
-            std::vector<std::size_t> inequalities;
-            for (std::size_t i = 0; i < total_ctr_num; ++i)
-            {
-                if (std::abs(constraints_lb(i) - constraints_ub(i)) < 1e-9)
-                {
-                    equalities.push_back(i);
-                }
-                else
-                {
-                    inequalities.push_back(i);
-                }
-            }
-
-            const std::size_t num_eq = equalities.size();
-            const std::size_t num_ineq = total_ctr_num - equalities.size();
-
-
             Eigen::MatrixXd Aeq;
             Eigen::VectorXd Beq;
             Eigen::MatrixXd Aineq;
             Eigen::VectorXd Bineq;
 
-            Aeq.resize(num_eq, qp_container.problem_.getNumberOfVariables());
-            Beq.resize(num_eq);
-            for (std::size_t i = 0; i < num_eq; ++i)
-            {
-                Aeq.row(i) = constraints.row(equalities[i]);
-                Beq(i) = -constraints_lb(equalities[i]);
-            }
+            benchmark::getQuadProgConstraints(
+                    &Aeq,
+                    &Beq,
+                    &Aineq,
+                    &Bineq,
+                    qp_container.problem_.getNumberOfVariables(),
+                    qp_container.problem_.constraints_.matrix_,
+                    qp_container.problem_.constraints_.lower_,
+                    qp_container.problem_.constraints_.upper_,
+                    qp_container.problem_.bounds_.lower_,
+                    qp_container.problem_.bounds_.upper_);
 
-            Aineq.resize(num_ineq * 2, qp_container.problem_.getNumberOfVariables());
-            Bineq.resize(num_ineq * 2);
-            for (std::size_t i = 0; i < num_ineq; ++i)
-            {
-                Aineq.row(i) = constraints.row(inequalities[i]);
-                Bineq(i) = -constraints_lb(inequalities[i]);
-                Aineq.row(num_ineq + i) = -constraints.row(inequalities[i]);
-                Bineq(num_ineq + i) = constraints_ub(inequalities[i]);
-            }
 
-            qp.reset(qp_container.problem_.getNumberOfVariables(), num_eq, num_ineq * 2);
+            qp.reset(qp_container.problem_.getNumberOfVariables(), Aeq.rows(), Aineq.rows());
 
 
             Eigen::VectorXd solution;
@@ -380,9 +320,9 @@ int main(int argc, char **argv)
     }
     else
     {
-        std::cout << "qpmad " << results.qpmad_.durations_.mean() << std::endl;
-        std::cout << "qpOASES " << results.qpoases_.durations_.mean() << std::endl;
-        std::cout << "eiquadprog " << results.eiquadprog_.durations_.mean() << std::endl;
+        std::cout << "qpmad " << results.qpmad_.durations_.sum() << std::endl;
+        std::cout << "qpOASES " << results.qpoases_.durations_.sum() << std::endl;
+        std::cout << "eiquadprog " << results.eiquadprog_.durations_.sum() << std::endl;
 
         // ariles2::apply<ariles2::octave::Writer>(std::cout, results);
         ariles2::apply<ariles2::octave::Writer>("oneshot.m", results);
