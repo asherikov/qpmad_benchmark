@@ -12,10 +12,15 @@ Solvers:
 Problems
 --------
 
+- All problems are dense and positive-definite.
+
+
+### Problem sets
+
 - `qpOASES` problem set
   https://github.com/coin-or/qpOASES/tree/misc/testingdata/cpp, converted to
-  `JSON` in https://github.com/asherikov/qp_collection/. Only positive-definite
-  problems are used.
+  `JSON` in https://github.com/asherikov/qp_collection/, positive-semidefinite
+  problems are skipped.
 
 
 Notes

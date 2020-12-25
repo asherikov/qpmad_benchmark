@@ -173,8 +173,6 @@ int main(int argc, char **argv)
             qp->setOptions(options);
 
 
-            qpOASES::real_t *max_time_ptr = NULL;
-
             const qpOASES::real_t *lb_ptr = NULL;
             const qpOASES::real_t *ub_ptr = NULL;
             if (qp_container.problem_.hasBounds())
@@ -205,9 +203,9 @@ int main(int argc, char **argv)
             Eigen::VectorXd solution;
             solution.resize(qp_container.problem_.getNumberOfVariables());
 
-            int number_of_iterations = 10000;
 
             std::cout << qp_container.problem_.id_ << "  ";
+            int number_of_iterations = 10000;
             timer.start();
             qpoases_return_value = qp->init(
                     qp_container.problem_.objective_.hessian_.data(),
@@ -218,7 +216,7 @@ int main(int argc, char **argv)
                     lbA_ptr,
                     ubA_ptr,
                     number_of_iterations,
-                    max_time_ptr);
+                    /*max_time_ptr=*/NULL);
             qp->getPrimalSolution(solution.data());
             results.qpoases_.durations_(result_index) = timer.stop();
 

@@ -140,5 +140,34 @@ namespace qp
 
     public:
         virtual ~IterativeQP() = default;
+
+        std::size_t getNumberOfVariables() const
+        {
+            return (common_.getNumberOfVariables());
+        }
+
+        std::size_t getNumberOfConstraints() const
+        {
+            if (instances_.size() > 0)
+            {
+                return (common_.getNumberOfConstraints() + instances_[0].getNumberOfConstraints());
+            }
+            else
+            {
+                return (common_.getNumberOfConstraints());
+            }
+        }
+
+        std::size_t hasBounds() const
+        {
+            if (instances_.size() > 0)
+            {
+                return (common_.hasBounds() > 0 or instances_[0].hasBounds());
+            }
+            else
+            {
+                return (common_.hasBounds() > 0);
+            }
+        }
     };
 }  // namespace qp
