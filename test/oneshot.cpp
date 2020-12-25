@@ -319,6 +319,61 @@ int main(int argc, char **argv)
 
         // ariles2::apply<ariles2::octave::Writer>(std::cout, results);
         ariles2::apply<ariles2::octave::Writer>("oneshot.m", results);
+
+        std::ofstream octave_script;
+        octave_script.open("oneshot.m", std::ofstream::out | std::ofstream::app);
+/*
+        octave_script <<
+R"string(
+figure('position',[0,0,1200,400])
+hold on
+plot(qpmad.durations, 'r')
+plot(qpoases.durations, 'k')
+plot(eiquadprog.durations, 'b')
+legend(['qpmad, mean=', num2str(mean(qpmad.durations))], ...
+       ['qpoases, mean=', num2str(mean(qpoases.durations))], ...
+       ['eiquadprog, mean=', num2str(mean(eiquadprog.durations))], ...
+        'Location', 'northwest')
+axis tight
+print ('oneshot.png', '-dpng', '-color', '-tight', '-F:12', '-S1200,400');
+figure('position',[0,0,1200,400])
+hold on
+semilogy(qpmad.durations, 'r')
+semilogy(qpoases.durations, 'k')
+semilogy(eiquadprog.durations, 'b')
+legend(['qpmad, mean=', num2str(mean(qpmad.durations))], ...
+       ['qpoases, mean=', num2str(mean(qpoases.durations))], ...
+       ['eiquadprog, mean=', num2str(mean(eiquadprog.durations))], ...
+        'Location', 'northwest')
+axis tight
+print ('oneshot_log.png', '-dpng', '-color', '-tight', '-F:12', '-S1200,400');
+)string" << std::endl;
+*/
+        octave_script <<
+R"string(
+figure('position',[0,0,1200,400])
+hold on
+bar([qpoases.durations, eiquadprog.durations, qpmad.durations], 'basevalue', 1e-7)
+legend(['qpoases, mean=', num2str(mean(qpoases.durations))], ...
+       ['eiquadprog, mean=', num2str(mean(eiquadprog.durations))], ...
+       ['qpmad, mean=', num2str(mean(qpmad.durations))], ...
+        'Location', 'northwest')
+axis tight
+print ('oneshot.png', '-dpng', '-color', '-tight', '-F:12', '-S1200,400');
+figure('position',[0,0,1200,400])
+hold on
+bar([qpoases.durations, eiquadprog.durations, qpmad.durations], 'basevalue', 1e-7)
+set(gca,'yscale','log')
+legend(['qpoases'], ...
+       ['eiquadprog'], ...
+       ['qpmad'], ...
+        'Location', 'north')
+axis tight
+print ('oneshot_log.png', '-dpng', '-color', '-tight', '-F:12', '-S1200,400');
+)string" << std::endl;
+
+        octave_script.close();
+
         return (EXIT_SUCCESS);
     }
 }

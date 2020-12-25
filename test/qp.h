@@ -15,6 +15,8 @@
 #include <ariles2/adapters/basic.h>
 #include <ariles2/adapters/eigen.h>
 #include <ariles2/adapters/std_vector.h>
+#include <ariles2/adapters/std_pair.h>
+#include <ariles2/adapters/std_map.h>
 
 #include <ariles2/ariles.h>
 #include <ariles2/extra.h>

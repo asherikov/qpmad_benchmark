@@ -38,6 +38,10 @@ build-tests: build
 #----------------------------------------------
 test: clean
 	${MAKE} build-tests
+
+plots:
+	octave --no-history --silent build/test/oneshot.m
+	octave --no-history --silent build/test/iterative.m
 #----------------------------------------------
 
 

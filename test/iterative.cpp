@@ -19,7 +19,7 @@
 
 namespace
 {
-    class Results : public ariles2::DefaultBase
+    class Results : public ariles2::SloppyBase
     {
 #define ARILES2_ENTRIES(v)                                                                                             \
     ARILES2_TYPED_ENTRY_(v, errors, Eigen::VectorXd)                                                                   \
@@ -27,11 +27,6 @@ namespace
 #include ARILES2_INITIALIZE
 
     public:
-        Results(const std::size_t size)
-        {
-            resize(size);
-        }
-
         void resize(const std::size_t size)
         {
             errors_.setZero(size);
@@ -40,17 +35,25 @@ namespace
     };
 
 
-    class AllResults : public ariles2::DefaultBase
+    class AllResults : public ariles2::SloppyBase
     {
 #define ARILES2_ENTRIES(v)                                                                                             \
-    ARILES2_TYPED_ENTRY_(v, qpmad, Results)                                                                            \
-    ARILES2_TYPED_ENTRY_(v, qpoases, Results)                                                                          \
-    ARILES2_TYPED_ENTRY_(v, eiquadprog, Results)
+    ARILES2_ENTRY_(v, qpmad)                                                                                           \
+    ARILES2_ENTRY_(v, qpoases)                                                                                         \
+    ARILES2_ENTRY_(v, eiquadprog)
 #include ARILES2_INITIALIZE
 
     public:
-        AllResults(const std::size_t size) : qpmad_(size), qpoases_(size), eiquadprog_(size)
+        std::map<std::string, Results> qpmad_;
+        std::map<std::string, Results> qpoases_;
+        std::map<std::string, Results> eiquadprog_;
+
+    public:
+        void resize(const std::string &id, const std::size_t size)
         {
+            qpmad_[id].resize(size);
+            qpoases_[id].resize(size);
+            eiquadprog_[id].resize(size);
         }
     };
 }  // namespace
@@ -107,20 +110,21 @@ int main(int argc, char **argv)
     }
 
 
-    std::size_t results_size = 0;
+    AllResults results;
     for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
     {
-        results_size += qp_container.problem_.instances_.size();
+        results.resize(qp_container.problem_.id_, qp_container.problem_.instances_.size());
     }
-    AllResults results(results_size);
+    benchmark::Timer timer;
+
+
     bool fail = false;
     try
     {
-        benchmark::Timer timer;
-        std::size_t result_index = 0;
-
         for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
         {
+            std::size_t result_index = 0;
+
             qpmad::Solver solver;
             qpmad::Solver::ReturnStatus status;
             Eigen::MatrixXd hessian_copy = qp_container.problem_.common_.objective_.hessian_;
@@ -145,17 +149,18 @@ int main(int argc, char **argv)
                         qp_problem.constraints_.lower_,
                         qp_problem.constraints_.upper_,
                         param);
-                results.qpmad_.durations_(result_index) = timer.stop();
 
-                results.qpmad_.errors_(result_index) = (solution - qp_problem.solution_.vector_).norm();
-                if (results.qpmad_.errors_(result_index) < 1e-9)
+                results.qpmad_[qp_container.problem_.id_].durations_(result_index) = timer.stop();
+                const double err = (solution - qp_problem.solution_.vector_).norm();
+                results.qpmad_[qp_container.problem_.id_].errors_(result_index) = err;
+                if (err < 1e-9)
                 {
                     // std::cout << "ok, " << timer << std::endl;
                 }
                 else
                 {
                     fail = true;
-                    std::cout << "fail, error = " << results.qpmad_.errors_(result_index) << std::endl;
+                    std::cout << "fail, error = " << err << std::endl;
                     break;
                 }
                 ++result_index;
@@ -174,11 +179,10 @@ int main(int argc, char **argv)
 
     try
     {
-        benchmark::Timer timer;
-        std::size_t result_index = 0;
-
         for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
         {
+            std::size_t result_index = 0;
+
             std::shared_ptr<qpOASES::QProblem> qp = std::make_shared<qpOASES::QProblem>(
                     qp_container.problem_.getNumberOfVariables(),
                     qp_container.problem_.getNumberOfConstraints(),
@@ -262,18 +266,18 @@ int main(int argc, char **argv)
                             /*max_time_ptr=*/NULL);
                     qp->getPrimalSolution(solution.data());
                 }
-                results.qpoases_.durations_(result_index) = timer.stop();
+                results.qpoases_[qp_container.problem_.id_].durations_(result_index) = timer.stop();
+                const double err = (solution - qp_problem.solution_.vector_).norm();
+                results.qpoases_[qp_container.problem_.id_].errors_(result_index) = err;
 
-                results.qpoases_.errors_(result_index) = (solution - qp_problem.solution_.vector_).norm();
-                if (results.qpoases_.errors_(result_index) < 5e-9)
+                if (err < 5e-9)
                 {
                     // std::cout << "ok, " << timer << " || " << qpoases_return_value << std::endl;
                 }
                 else
                 {
                     fail = true;
-                    std::cout << "fail, error = " << results.qpoases_.errors_(result_index) << " || "
-                              << qpoases_return_value << std::endl;
+                    std::cout << "fail, error = " << err << " || " << qpoases_return_value << std::endl;
                 }
                 ++result_index;
                 first = false;
@@ -290,11 +294,10 @@ int main(int argc, char **argv)
 
     try
     {
-        benchmark::Timer timer;
-        std::size_t result_index = 0;
-
         for (benchmark::Problem<qp::IterativeQP> &qp_container : qps)
         {
+            std::size_t result_index = 0;
+
             Eigen::VectorXd solution;
             solution.resize(qp_container.problem_.getNumberOfVariables());
 
@@ -335,15 +338,16 @@ int main(int argc, char **argv)
                         Aineq,
                         Bineq,
                         solution);
-                results.eiquadprog_.durations_(result_index) = timer.stop();
+                results.eiquadprog_[qp_container.problem_.id_].durations_(result_index) = timer.stop();
+                const double err = (solution - qp_problem.solution_.vector_).norm();
+                results.eiquadprog_[qp_container.problem_.id_].errors_(result_index) = err;
 
-                results.eiquadprog_.errors_(result_index) = (solution - qp_problem.solution_.vector_).norm();
                 double tol = 1e-9;
                 if ("crane.json" == qp_container.problem_.id_)
                 {
                     tol = 5e-4;  // XXX hm, 1e-9 fails on crane
                 }
-                if (results.eiquadprog_.errors_(result_index) < tol)
+                if (err < tol)
                 {
                     // std::cout << "ok, " << timer << std::endl;
                 }
@@ -356,7 +360,7 @@ int main(int argc, char **argv)
                                          + qp_problem.objective_.vector_.transpose() * solution
                               << std::endl;
                     std::cout << (Aineq * qp_problem.solution_.vector_ + Bineq).array().minCoeff() << std::endl;
-                    std::cout << "fail, error = " << results.eiquadprog_.errors_(result_index) << std::endl;
+                    std::cout << "fail, error = " << err << std::endl;
                     break;
                 }
                 ++result_index;
@@ -377,12 +381,37 @@ int main(int argc, char **argv)
     }
     else
     {
+        /*
         std::cout << "qpmad " << results.qpmad_.durations_.sum() << std::endl;
         std::cout << "qpOASES " << results.qpoases_.durations_.sum() << std::endl;
         std::cout << "eiquadprog " << results.eiquadprog_.durations_.sum() << std::endl;
+        */
 
-        // ariles2::apply<ariles2::octave::Writer>(std::cout, results);
         ariles2::apply<ariles2::octave::Writer>("iterative.m", results);
+
+
+        std::ofstream octave_script;
+        octave_script.open("iterative.m", std::ofstream::out | std::ofstream::app);
+        octave_script <<
+R"string(
+figure('position',[0,0,1200,800])
+for i = 1:4
+    subplot(2,2,i)
+    hold on
+    title(qpoases{i}.first)
+    plot(qpoases{i}.second.durations, 'k')
+    plot(eiquadprog{i}.second.durations, 'b')
+    plot(qpmad{i}.second.durations, 'r')
+    legend(['qpoases, mean=', num2str(mean(qpoases{i}.second.durations))], ...
+           ['eiquadprog, mean=', num2str(mean(eiquadprog{i}.second.durations))], ...
+           ['qpmad, mean=', num2str(mean(qpmad{i}.second.durations))], ...
+            'Location', 'northeast')
+    xlim([0, numel(qpoases{i}.second.durations)])
+end
+print ('iterative.png', '-dpng', '-color', '-tight', '-F:8', '-S1200,800');
+)string" << std::endl;
+        octave_script.close();
+
         return (EXIT_SUCCESS);
     }
 }
