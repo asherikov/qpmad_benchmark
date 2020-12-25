@@ -168,6 +168,10 @@ int main(int argc, char **argv)
                     qp_container.problem_.getNumberOfConstraints(),
                     qpOASES::HST_POSDEF);
 
+            qpOASES::Options options;
+            options.setToMPC();
+            qp->setOptions(options);
+
 
             qpOASES::real_t *max_time_ptr = NULL;
 
@@ -196,11 +200,6 @@ int main(int argc, char **argv)
                 ubA_ptr = qp_container.problem_.constraints_.upper_.data();
             }
 
-            const qpOASES::real_t *solution_guess_ptr = NULL;
-
-            qpOASES::Bounds *active_set_bounds_ptr = NULL;
-            qpOASES::Constraints *active_set_constraints_ptr = NULL;
-
             qpOASES::returnValue qpoases_return_value;
 
             Eigen::VectorXd solution;
@@ -219,16 +218,12 @@ int main(int argc, char **argv)
                     lbA_ptr,
                     ubA_ptr,
                     number_of_iterations,
-                    max_time_ptr,
-                    solution_guess_ptr,
-                    NULL,  // Optimal dual solution vector
-                    active_set_bounds_ptr,
-                    active_set_constraints_ptr);
+                    max_time_ptr);
             qp->getPrimalSolution(solution.data());
             results.qpoases_.durations_(result_index) = timer.stop();
 
             results.qpoases_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
-            if (results.qpoases_.errors_(result_index) < 1e-9)
+            if (results.qpoases_.errors_(result_index) < 5e-9)
             {
                 std::cout << "ok, " << timer << std::endl;
             }
