@@ -133,6 +133,7 @@ int main(int argc, char **argv)
             const bool has_common_ctr = qp_container.problem_.common_.getNumberOfConstraints() > 0;
             qpmad::SolverParameters param;
             param.hessian_type_ = qpmad::SolverParameters::HESSIAN_LOWER_TRIANGULAR;
+            param.return_inverted_cholesky_factor_ = true;
 
             std::cout << qp_container.problem_.id_ << std::endl;
             for (qp::QP qp_problem : qp_container.problem_.instances_)
@@ -165,7 +166,7 @@ int main(int argc, char **argv)
                 }
                 ++result_index;
                 // reuse Hessian factorization.
-                param.hessian_type_ = qpmad::SolverParameters::HESSIAN_CHOLESKY_FACTOR;
+                param.hessian_type_ = solver.getHessianType();
             }
         }
     }
