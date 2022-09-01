@@ -42,6 +42,7 @@ test: clean
 plots:
 	octave --no-history --silent build/test/oneshot.m
 	octave --no-history --silent build/test/iterative.m
+#	octave --no-history --silent build/test/iterative_sparse.m
 #----------------------------------------------
 
 

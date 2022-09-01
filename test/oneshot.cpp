@@ -44,12 +44,13 @@ namespace
     {
 #define ARILES2_ENTRIES(v)                                                                                             \
     ARILES2_TYPED_ENTRY_(v, qpmad, Results)                                                                            \
+    ARILES2_TYPED_ENTRY_(v, qpmad_sparse, Results)                                                                     \
     ARILES2_TYPED_ENTRY_(v, qpoases, Results)                                                                          \
     ARILES2_TYPED_ENTRY_(v, eiquadprog, Results)
 #include ARILES2_INITIALIZE
 
     public:
-        AllResults(const std::size_t size) : qpmad_(size), qpoases_(size), eiquadprog_(size)
+        AllResults(const std::size_t size) : qpmad_(size), qpmad_sparse_(size), qpoases_(size), eiquadprog_(size)
         {
         }
     };
@@ -144,6 +145,54 @@ int main(int argc, char **argv)
             {
                 fail = true;
                 std::cout << "fail, error = " << results.qpmad_.errors_(result_index) << std::endl;
+            }
+            ++result_index;
+        }
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        return (EXIT_FAILURE);
+    }
+    std::cout << "---" << std::endl;
+
+
+    try
+    {
+        benchmark::Timer timer;
+        std::size_t result_index = 0;
+
+        for (benchmark::Problem<qp::QP> &qp_container : qps)
+        {
+            qpmad::Solver solver;
+            qpmad::Solver::ReturnStatus status;
+            Eigen::MatrixXd hessian_copy = qp_container.problem_.objective_.hessian_;
+            Eigen::VectorXd solution;
+
+            Eigen::SparseMatrix<double> ctr_sparse = qp_container.problem_.constraints_.matrix_.sparseView();
+
+            std::cout << qp_container.problem_.id_ << "  ";
+            timer.start();
+            status = solver.solve(
+                    solution,
+                    hessian_copy,
+                    qp_container.problem_.objective_.vector_,
+                    qp_container.problem_.bounds_.lower_,
+                    qp_container.problem_.bounds_.upper_,
+                    ctr_sparse,
+                    qp_container.problem_.constraints_.lower_,
+                    qp_container.problem_.constraints_.upper_);
+            results.qpmad_sparse_.durations_(result_index) = timer.stop();
+
+            results.qpmad_sparse_.errors_(result_index) = (solution - qp_container.problem_.solution_.vector_).norm();
+            if (results.qpmad_sparse_.errors_(result_index) < 1e-9)
+            {
+                std::cout << "ok, " << timer << std::endl;
+            }
+            else
+            {
+                fail = true;
+                std::cout << "fail, error = " << results.qpmad_sparse_.errors_(result_index) << std::endl;
             }
             ++result_index;
         }
