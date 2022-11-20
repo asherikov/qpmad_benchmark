@@ -29,7 +29,7 @@ build:
 	cd ${BUILD_SUBDIR}; ${MAKE} ${MAKE_FLAGS} ${TARGETS}
 
 build-tests: build
-	cd ${BUILD_SUBDIR}; env ${TEST_ENV} ctest --verbose
+	cd ${BUILD_SUBDIR}; env ${TEST_ENV} ctest --verbose -j 1
 #----------------------------------------------
 
 

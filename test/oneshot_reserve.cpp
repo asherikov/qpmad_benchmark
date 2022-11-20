@@ -172,7 +172,7 @@ int main(int argc, char **argv)
         std::cout << "qpmad " << results.qpmad_.durations_.sum() << std::endl;
 
         // ariles2::apply<ariles2::octave::Writer>(std::cout, results);
-        ariles2::apply<ariles2::octave::Writer>("oneshot.m", results);
+        ariles2::apply<ariles2::octave::Writer>("oneshot_reserve.m", results);
 
         return (EXIT_SUCCESS);
     }
